@@ -32,6 +32,8 @@ func Execute(db *sqlx.DB, table string, total int) {
 func (s *Seed) run(table string, total int) {
 
 	switch table {
+	case "categories":
+		s.categoriesSeed()
 	case "roles":
 		s.rolesSeed()
 	case "users":
@@ -225,4 +227,45 @@ func (s *Seed) usersSeed(total int) {
 	}
 
 	log.Info().Msg("users table seeded successfully")
+}
+
+func (s *Seed) categoriesSeed() {
+	roleMaps := []map[string]any{
+		{
+			"name":        "Electronic",
+			"description": "Electronic",
+		},
+		{
+			"name":        "Beauty",
+			"description": "Beauty",
+		},
+	}
+
+	tx, err := s.db.BeginTxx(context.Background(), nil)
+	if err != nil {
+		log.Error().Err(err).Msg("Error starting transaction")
+		return
+	}
+	defer func() {
+		if err != nil {
+			err = tx.Rollback()
+			log.Error().Err(err).Msg("Error rolling back transaction")
+			return
+		}
+		err = tx.Commit()
+		if err != nil {
+			log.Error().Err(err).Msg("Error committing transaction")
+		}
+	}()
+
+	_, err = tx.NamedExec(`
+		INSERT INTO categories (name, description)
+		VALUES (:name, :description)
+	`, roleMaps)
+	if err != nil {
+		log.Error().Err(err).Msg("Error creating roles")
+		return
+	}
+
+	log.Info().Msg("roles table seeded successfully")
 }
