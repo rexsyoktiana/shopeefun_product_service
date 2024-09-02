@@ -110,6 +110,90 @@ func (r *productRepository) GetProducts(ctx context.Context, req *entity.Product
 		TotalData int `db:"total_data"`
 		entity.ProductItem
 	}
+	var (
+		resp = new(entity.ProductResponse)
+		data = make([]dao, 0, req.Paginate)
+	)
+	resp.Items = make([]entity.ProductItem, 0, req.Paginate)
+
+	args := []interface{}{}
+	query := `SELECT COUNT(a.id) OVER() as total_data,
+			a.id,
+			a.name,
+			a.description,
+			a.shop_id,
+			b.name shop_name,
+			a.category_id,
+			c.name category_name,
+			a.price,
+			a.stock
+			FROM products a
+			INNER JOIN shops b ON b.id = a.shop_id
+			INNER JOIN categories c ON c.id = a.category_id
+			WHERE a.user_id = ? AND a.deleted_at is NULL `
+
+	args = append(args, req.UserId)
+
+	if req.ShopId != "" {
+		query += ` AND a.shop_id = ? `
+		args = append(args, req.ShopId)
+	}
+
+	if req.CategoryId != "" {
+		query += ` AND a.category_id = ? `
+		args = append(args, req.CategoryId)
+	}
+
+	if req.CategoryName != "" {
+		query += ` AND c.name ILIKE ? `
+		args = append(args, "%"+req.CategoryName+"%")
+	}
+
+	if req.MinPrice > 0 && req.MaxPrice > 0 {
+		query += ` AND a.price BETWEEN ? AND ? `
+		args = append(args, req.MinPrice, req.MaxPrice)
+	}
+
+	if req.MinPrice == 0 && req.MaxPrice > 0 {
+		query += ` AND a.price <= ? `
+		args = append(args, req.MaxPrice)
+	}
+
+	if req.Name != "" {
+		query += ` AND a.name ILIKE ? `
+		args = append(args, "%"+req.Name+"%")
+	}
+
+	query += ` LIMIT ? OFFSET ? `
+
+	args = append(args, req.Paginate)
+	args = append(args, req.Paginate*(req.Page-1))
+
+	err := r.db.SelectContext(ctx, &data, r.db.Rebind(query), args...)
+	if err != nil {
+		log.Error().Err(err).Any("payload", req).Msg("repository::GetProducts - Failed to get products")
+		return nil, err
+	}
+
+	if len(data) > 0 {
+		resp.Meta.TotalData = data[0].TotalData
+	}
+
+	for _, d := range data {
+		resp.Items = append(resp.Items, d.ProductItem)
+	}
+
+	resp.Meta.CountTotalPage(req.Page, req.Paginate, resp.Meta.TotalData)
+
+	return resp, nil
+
+}
+
+func (r *productRepository) GetProductsBackup(ctx context.Context, req *entity.ProductRequest) (*entity.ProductResponse, error) {
+	type dao struct {
+		TotalData int `db:"total_data"`
+		entity.ProductItem
+	}
 
 	var (
 		resp = new(entity.ProductResponse)

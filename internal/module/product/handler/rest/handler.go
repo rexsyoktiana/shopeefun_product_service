@@ -162,14 +162,18 @@ func (h *productHandler) GetProducts(c *fiber.Ctx) error {
 	}
 
 	req.UserId = l.UserId
-	req.ShopId = c.Query("shop_id")
-	log.Warn().Any("testing get reqqq", req).Msg("handler::TEstttt - Validate request body")
 
 	req.SetDefault()
 
 	if err := v.Validate(req); err != nil {
 		log.Warn().Err(err).Any("payload", req).Msg("handler::GetProducts - Validate request body")
 		code, errs := errmsg.Errors(err, req)
+		return c.Status(code).JSON(response.Error(errs))
+	}
+
+	if req.MinPrice > req.MaxPrice {
+		log.Warn().Any("payload", req).Msg("handler::GetProducts - min price higher than maxprice")
+		code, errs := errmsg.Errors(errmsg.NewCustomErrors(400, errmsg.WithMessage("Min price higher than Max Price")), req)
 		return c.Status(code).JSON(response.Error(errs))
 	}
 

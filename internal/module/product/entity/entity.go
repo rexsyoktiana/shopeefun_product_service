@@ -52,10 +52,15 @@ type UpdateProductResponse struct {
 }
 
 type ProductRequest struct {
-	UserId   string `prop:"user_id" validate:"uuid"`
-	ShopId   string `query:"shop_id" validate:"uuid"`
-	Page     int    `query:"page" validate:"required"`
-	Paginate int    `query:"paginate" validate:"required"`
+	UserId       string  `prop:"user_id" validate:"uuid"`
+	ShopId       string  `query:"shop_id" validate:"required,uuid"`
+	CategoryId   string  `query:"category_id" validate:"omitempty,uuid"`
+	CategoryName string  `query:"category_name"`
+	MinPrice     float64 `query:"min_price"`
+	MaxPrice     float64 `query:"max_price"`
+	Name         string  `query:"name"`
+	Page         int     `query:"page" validate:"required"`
+	Paginate     int     `query:"paginate" validate:"required"`
 }
 
 func (r *ProductRequest) SetDefault() {
